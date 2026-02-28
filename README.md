@@ -14,7 +14,8 @@ Data extraction toolkit (React app + Chrome extension) focused on Tableau-first 
 ## Structure
 - `app/` – React UI (Vite) to test URL parsing and extraction workflows.
 - `extension/` – Chrome extension (MV3) to extract from current tab using your logged-in session.
-- `shared/` – shared Tableau URL parsing + extractor helpers.
+- `shared/` – shared adapters and extractor helpers.
+- `server/` – Node proxy API (`/extract`) for server-side fetching (avoids browser CORS limits).
 
 ## Tableau notes
 For many public dashboards, a direct CSV export endpoint is available:

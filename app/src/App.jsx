@@ -1,5 +1,4 @@
 import React, { useState } from 'react'
-import { extractDataFromUrl } from '../../shared/adapters/index.js'
 import { buildTableauCsvUrl } from '../../shared/adapters/tableau.js'
 
 const defaultUrl = 'https://public.tableau.com/app/profile/john.johansson/viz/SuperstoreShippingMetrics/Superstore'
@@ -33,7 +32,9 @@ export default function App() {
     setResult('Working...')
     setPreview({ headers: [], rows: [] })
     try {
-      const data = await extractDataFromUrl(url)
+      const res = await fetch(`/datad/api/extract?url=${encodeURIComponent(url)}`)
+      if (!res.ok) throw new Error(`Proxy extract failed (${res.status})`)
+      const data = await res.json()
       setPreview(parseCsvPreview(data.outputs?.csv?.text || ''))
       setResult(JSON.stringify({
         ...data,
