@@ -3,9 +3,12 @@
 Data extraction toolkit (React app + Chrome extension) focused on Tableau-first workflows.
 
 ## What this does
-- Detects Tableau viz URLs.
-- Attempts export endpoints first (CSV/Summary) for fast structured extraction.
-- Falls back to credentialed fetch (browser session/cookies) for pages requiring auth.
+- Detects URLs and routes extraction through an adapter layer (`shared/adapters/*`).
+- Tableau adapter now does 3 paths:
+  - grabs bootstrap/session hints from page/HTML context,
+  - calls VizQL bootstrap endpoint with session context + cookies,
+  - returns normalized output containing JSON + CSV data.
+- Uses credentialed fetch (browser session/cookies) for authenticated Tableau pages.
 - Keeps extractor logic in `shared/` so app and extension use the same code path.
 
 ## Structure
