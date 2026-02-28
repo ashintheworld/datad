@@ -20,6 +20,14 @@ function isYahooQuoteUrl(url) {
   }
 }
 
+function sanitizeFilename(s) {
+  return String(s || 'section')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+    .slice(0, 60) || 'section'
+}
+
 async function getYahooPageSections(tabId) {
   const [{ result }] = await chrome.scripting.executeScript({
     target: { tabId },
@@ -28,7 +36,6 @@ async function getYahooPageSections(tabId) {
       const clean = (s) => (s || '').replace(/\s+/g, ' ').trim()
       const sections = []
 
-      // Common Yahoo quote module shape: rows with 2 spans/divs (key, value)
       const candidateContainers = Array.from(document.querySelectorAll('section,div'))
       for (const el of candidateContainers) {
         const rows = []
@@ -41,7 +48,7 @@ async function getYahooPageSections(tabId) {
           if (cells.length >= 2) {
             const key = cells[0]
             const value = cells.slice(1).join(' | ')
-            if (key && value && key.length < 80) rows.push([key, value])
+            if (key && value && key.length < 120) rows.push([key, value])
           }
         }
 
@@ -52,7 +59,6 @@ async function getYahooPageSections(tabId) {
         }
       }
 
-      // Deduplicate by title + first rows signature
       const seen = new Set()
       const deduped = []
       for (const s of sections) {
@@ -66,7 +72,7 @@ async function getYahooPageSections(tabId) {
         url: location.href,
         title: document.title,
         sectionCount: deduped.length,
-        sections: deduped.slice(0, 20)
+        sections: deduped.slice(0, 30)
       }
     }
   })
@@ -100,11 +106,42 @@ async function getTableauPageContext(tabId) {
   return result
 }
 
+async function getActiveTab() {
+  const [tab] = await chrome.tabs.query({ active: true, currentWindow: true })
+  if (!tab?.url || !tab?.id) throw new Error('No active tab URL')
+  return tab
+}
+
+async function exportYahooSectionsAsCsv(tab) {
+  const page = await getYahooPageSections(tab.id)
+  if (!page?.sections?.length) throw new Error('No Yahoo sections found from page context')
+
+  let exported = 0
+  for (let i = 0; i < page.sections.length; i += 1) {
+    const s = page.sections[i]
+    const csv = toCsv([['field', 'value'], ...s.rows])
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' })
+    const url = URL.createObjectURL(blob)
+    const filename = `datad/yahoo-${sanitizeFilename(new URL(tab.url).pathname.split('/').filter(Boolean).pop() || 'symbol')}-${String(i + 1).padStart(2, '0')}-${sanitizeFilename(s.title)}.csv`
+
+    await chrome.downloads.download({
+      url,
+      filename,
+      saveAs: false,
+      conflictAction: 'uniquify'
+    })
+    exported += 1
+
+    setTimeout(() => URL.revokeObjectURL(url), 20000)
+  }
+
+  out.textContent = `Exported ${exported} CSV files to Downloads/datad/`
+}
+
 document.getElementById('extract').addEventListener('click', async () => {
   out.textContent = 'Working...'
   try {
-    const [tab] = await chrome.tabs.query({ active: true, currentWindow: true })
-    if (!tab?.url || !tab?.id) throw new Error('No active tab URL')
+    const tab = await getActiveTab()
 
     if (isYahooQuoteUrl(tab.url)) {
       const page = await getYahooPageSections(tab.id)
@@ -147,6 +184,20 @@ document.getElementById('extract').addEventListener('click', async () => {
       vizql: data.outputs.vizql,
       tables: data.outputs?.json?.tables || null
     }, null, 2)
+  } catch (err) {
+    out.textContent = `Error: ${err.message}`
+  }
+})
+
+document.getElementById('exportCsvs').addEventListener('click', async () => {
+  out.textContent = 'Exporting CSV files...'
+  try {
+    const tab = await getActiveTab()
+    if (!isYahooQuoteUrl(tab.url)) {
+      throw new Error('Export all sections CSV is currently enabled for Yahoo quote pages only')
+    }
+
+    await exportYahooSectionsAsCsv(tab)
   } catch (err) {
     out.textContent = `Error: ${err.message}`
   }

@@ -8,7 +8,7 @@ Data extraction toolkit (React app + Chrome extension) focused on Tableau-first 
   - `tableau` for Tableau view/session/VizQL extraction
   - `yahoo-finance` for quote pages like `finance.yahoo.com/quote/AAPL` (server-side normalized quote)
   - `html-table` for generic HTML pages with `<table>` elements
-- Extension also supports Yahoo browser-session page extraction to return multiple in-page modules as table sets.
+- Extension also supports Yahoo browser-session page extraction to return multiple in-page modules as table sets, and can export all detected Yahoo sections as separate CSV files.
 - Tableau adapter now does 3 paths:
   - grabs bootstrap/session hints from page/HTML context,
   - calls VizQL bootstrap endpoint with session context + cookies,

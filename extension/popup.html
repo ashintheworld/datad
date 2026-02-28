@@ -10,7 +10,10 @@
   </head>
   <body>
     <h3 style="margin-top:0">datad</h3>
-    <button id="extract">Extract from current tab</button>
+    <div style="display:flex; gap:8px; flex-wrap:wrap; margin-bottom:8px;">
+      <button id="extract">Extract from current tab</button>
+      <button id="exportCsvs">Export all sections CSV</button>
+    </div>
     <pre id="out"></pre>
     <script type="module" src="popup.js"></script>
   </body>
