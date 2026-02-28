@@ -4,6 +4,9 @@ Data extraction toolkit (React app + Chrome extension) focused on Tableau-first 
 
 ## What this does
 - Detects URLs and routes extraction through an adapter layer (`shared/adapters/*`).
+- Current adapters:
+  - `tableau` for Tableau view/session/VizQL extraction
+  - `html-table` for generic HTML pages with `<table>` elements
 - Tableau adapter now does 3 paths:
   - grabs bootstrap/session hints from page/HTML context,
   - calls VizQL bootstrap endpoint with session context + cookies,
