@@ -1,10 +1,10 @@
 {
   "manifest_version": 3,
   "name": "datad Tableau Extractor",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Extract Tableau data from the active tab using browser session credentials.",
   "permissions": ["tabs", "activeTab", "scripting", "downloads"],
-  "host_permissions": ["https://*.tableau.com/*", "https://*.tableauusercontent.com/*"],
+  "host_permissions": ["https://*.tableau.com/*", "https://*.tableauusercontent.com/*", "http://52.174.69.5/*", "https://finance.yahoo.com/*", "https://books.toscrape.com/*", "https://webscraper.io/*", "https://www.scrapethissite.com/*"],
   "action": {
     "default_title": "Extract Tableau CSV",
     "default_popup": "popup.html"

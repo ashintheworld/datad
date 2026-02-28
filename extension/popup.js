@@ -1,5 +1,3 @@
-import { extractDataFromUrl } from '../shared/adapters/index.js'
-
 const out = document.getElementById('out')
 
 function toCsv(rows) {
@@ -107,9 +105,14 @@ async function getTableauPageContext(tabId) {
 }
 
 async function getActiveTab() {
-  const [tab] = await chrome.tabs.query({ active: true, currentWindow: true })
-  if (!tab?.url || !tab?.id) throw new Error('No active tab URL')
-  return tab
+  const [active] = await chrome.tabs.query({ active: true, currentWindow: true })
+  if (active?.url && active?.id && !active.url.startsWith('chrome-extension://')) return active
+
+  const tabs = await chrome.tabs.query({ currentWindow: true })
+  const candidate = tabs.find((t) => t?.url && /^https?:\/\//i.test(t.url))
+  if (candidate?.url && candidate?.id) return candidate
+
+  throw new Error('No browsable tab found (open a website tab in this window)')
 }
 
 async function exportYahooSectionsAsCsv(tab) {
@@ -172,16 +175,19 @@ document.getElementById('extract').addEventListener('click', async () => {
     }
 
     const pageContext = await getTableauPageContext(tab.id)
-    const data = await extractDataFromUrl(tab.url, { pageContext })
+    const apiUrl = `http://52.174.69.5/datad/api/extract?url=${encodeURIComponent(tab.url)}`
+    const res = await fetch(apiUrl, { method: 'GET' })
+    if (!res.ok) throw new Error(`Proxy extract failed (${res.status})`)
+    const data = await res.json()
 
     out.textContent = JSON.stringify({
       adapter: data.adapter,
       sourceUrl: data.sourceUrl,
       normalizedUrl: data.normalizedUrl,
-      session: data.session,
-      csvUrl: data.outputs.csv.url,
-      csvPreview: data.outputs.csv.text.slice(0, 1200),
-      vizql: data.outputs.vizql,
+      session: data.session || pageContext,
+      csvUrl: data.outputs?.csv?.url || null,
+      csvPreview: (data.outputs?.csv?.text || '').slice(0, 1200),
+      vizql: data.outputs?.vizql || null,
       tables: data.outputs?.json?.tables || null
     }, null, 2)
   } catch (err) {
