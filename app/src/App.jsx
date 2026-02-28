@@ -1,7 +1,9 @@
-import React, { useState } from 'react'
+import React, { useEffect, useMemo, useState } from 'react'
 import { buildTableauCsvUrl } from '../../shared/adapters/tableau.js'
 
 const defaultUrl = 'https://public.tableau.com/app/profile/john.johansson/viz/SuperstoreShippingMetrics/Superstore'
+const HISTORY_KEY = 'datad:url-history:v1'
+const HISTORY_MAX = 12
 
 function parseCsvPreview(text, maxRows = 12) {
   if (!text) return { headers: [], rows: [] }
@@ -14,11 +16,45 @@ function parseCsvPreview(text, maxRows = 12) {
   return { headers, rows }
 }
 
+function loadHistory() {
+  try {
+    const parsed = JSON.parse(localStorage.getItem(HISTORY_KEY) || '[]')
+    if (!Array.isArray(parsed)) return []
+    return parsed.filter((u) => typeof u === 'string').slice(0, HISTORY_MAX)
+  } catch {
+    return []
+  }
+}
+
 export default function App() {
   const [url, setUrl] = useState(defaultUrl)
   const [csvUrl, setCsvUrl] = useState('')
   const [result, setResult] = useState('')
   const [preview, setPreview] = useState({ headers: [], rows: [] })
+  const [history, setHistory] = useState([])
+
+  useEffect(() => {
+    setHistory(loadHistory())
+  }, [])
+
+  const selectedInHistory = useMemo(() => history.includes(url), [history, url])
+
+  function persistHistory(next) {
+    setHistory(next)
+    localStorage.setItem(HISTORY_KEY, JSON.stringify(next.slice(0, HISTORY_MAX)))
+  }
+
+  function saveUrlToHistory(nextUrl) {
+    const clean = String(nextUrl || '').trim()
+    if (!clean) return
+    const next = [clean, ...history.filter((u) => u !== clean)].slice(0, HISTORY_MAX)
+    persistHistory(next)
+  }
+
+  function removeCurrentFromHistory() {
+    const next = history.filter((u) => u !== url)
+    persistHistory(next)
+  }
 
   function handleBuild() {
     try {
@@ -35,6 +71,7 @@ export default function App() {
       const res = await fetch(`/datad/api/extract?url=${encodeURIComponent(url)}`)
       if (!res.ok) throw new Error(`Proxy extract failed (${res.status})`)
       const data = await res.json()
+      saveUrlToHistory(url)
       setPreview(parseCsvPreview(data.outputs?.csv?.text || ''))
       setResult(JSON.stringify({
         ...data,
@@ -54,15 +91,33 @@ export default function App() {
   return (
     <main style={{ fontFamily: 'system-ui', maxWidth: 1100, margin: '2rem auto', lineHeight: 1.45 }}>
       <h1>datad</h1>
-      <p>Adapter-based extractor playground (Tableau implemented first).</p>
-      <input
-        style={{ width: '100%', padding: '0.6rem' }}
-        value={url}
-        onChange={(e) => setUrl(e.target.value)}
-      />
+      <p>Adapter-based extractor playground (Tableau, Yahoo Finance, HTML tables).</p>
+
+      <div style={{ display: 'grid', gap: 8 }}>
+        <input
+          style={{ width: '100%', padding: '0.6rem' }}
+          value={url}
+          onChange={(e) => setUrl(e.target.value)}
+        />
+
+        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
+          <select
+            value={selectedInHistory ? url : ''}
+            onChange={(e) => setUrl(e.target.value)}
+            style={{ padding: '0.45rem', minWidth: 320, maxWidth: '100%' }}
+          >
+            <option value="">Recent extracted URLs</option>
+            {history.map((u) => (
+              <option key={u} value={u}>{u}</option>
+            ))}
+          </select>
+          <button style={{ padding: '0.45rem 0.75rem' }} onClick={removeCurrentFromHistory} disabled={!selectedInHistory}>Delete selected</button>
+        </div>
+      </div>
+
       <div style={{ marginTop: 12, display: 'flex', gap: 8 }}>
         <button style={{ padding: '0.5rem 0.8rem' }} onClick={handleBuild}>Build CSV endpoint</button>
-        <button style={{ padding: '0.5rem 0.8rem' }} onClick={handleExtract}>Extract (JSON + CSV + VizQL bootstrap)</button>
+        <button style={{ padding: '0.5rem 0.8rem' }} onClick={handleExtract}>Extract (JSON + CSV + VizQL/bootstrap)</button>
       </div>
 
       {csvUrl && (
